@@ -3,7 +3,7 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import torch
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 from utils.default_fm import set_model_config, \
     set_dataset, set_models, set_seed
 from utils.parser import set_parser
@@ -43,7 +43,8 @@ def main():
         set_seed(args)
     if args.local_rank in [-1, 0]:
         os.makedirs(args.out, exist_ok=True)
-        args.writer = SummaryWriter(args.out)
+        #args.writer = SummaryWriter(args.out)
+        print(args)
     set_model_config(args)
 
     if args.local_rank not in [-1, 0]:
