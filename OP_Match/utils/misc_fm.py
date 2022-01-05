@@ -154,7 +154,7 @@ def exclude_dataset(args, dataset, model, exclude_known=False):
                            disable=args.local_rank not in [-1, 0])
     model.eval()
     with torch.no_grad():
-        for batch_idx, ((_, _, inputs), targets) in enumerate(test_loader):
+        for batch_idx, ((_, _, inputs), targets, _) in enumerate(test_loader):
             data_time.update(time.time() - end)
 
             inputs = inputs.to(args.device)

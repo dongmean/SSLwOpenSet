@@ -158,7 +158,7 @@ class CIFAR10SSL(datasets.CIFAR10):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return img, target #, index
+        return img, target, index
 
 
 class CIFAR100SSL(datasets.CIFAR100):
@@ -205,7 +205,7 @@ class MyRandomImages(Dataset):
         if self.transform is not None:
             img = self.transform(img)
 
-        return img, 0 #, index  # 0 is the class
+        return img, 0 , index+50000  # 0 is the class
 
     def __len__(self):
         return len(self.data)

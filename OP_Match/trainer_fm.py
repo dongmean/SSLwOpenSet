@@ -28,6 +28,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader,
     global best_acc
     global best_acc_val
 
+    log = []
     test_accs = []
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -38,6 +39,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader,
     losses_socr = AverageMeter()
     losses_fix = AverageMeter()
     mask_probs = AverageMeter()
+    pseudo_acc = AverageMeter()
     end = time.time()
 
 
@@ -123,26 +125,26 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader,
             ## Data loading
 
             try:
-                (_, inputs_x_s, inputs_x), targets_x = labeled_iter.next()
+                (_, inputs_x_s, inputs_x), targets_x, _ = labeled_iter.next()
             except:
                 if args.world_size > 1:
                     labeled_epoch += 1
                     labeled_trainloader.sampler.set_epoch(labeled_epoch)
                 labeled_iter = iter(labeled_trainloader)
-                (_, inputs_x_s, inputs_x), targets_x = labeled_iter.next()
+                (_, inputs_x_s, inputs_x), targets_x, _ = labeled_iter.next()
             try:
-                (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()
+                (inputs_u_w, inputs_u_s, _), targets_u, indices = unlabeled_iter.next()
             except:
                 if args.world_size > 1:
                     unlabeled_epoch += 1
                     unlabeled_trainloader.sampler.set_epoch(unlabeled_epoch)
                 unlabeled_iter = iter(unlabeled_trainloader)
-                (inputs_u_w, inputs_u_s, _), _ = unlabeled_iter.next()
+                (inputs_u_w, inputs_u_s, _), targets_u, indices = unlabeled_iter.next()
             try:
-                (inputs_all_w, inputs_all_s, _), _ = unlabeled_all_iter.next()
+                (inputs_all_w, inputs_all_s, _), _, _ = unlabeled_all_iter.next()
             except:
                 unlabeled_all_iter = iter(unlabeled_trainloader_all)
-                (inputs_all_w, inputs_all_s, _), _ = unlabeled_all_iter.next()
+                (inputs_all_w, inputs_all_s, _), _, _ = unlabeled_all_iter.next()
             data_time.update(time.time() - end)
 
             b_size = inputs_x.shape[0]
@@ -177,10 +179,10 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader,
                 logits, logits_open_fix = model(inputs_ws)
                 logits_u_w, logits_u_s = logits.chunk(2)
                 pseudo_label = torch.softmax(logits_u_w.detach()/args.T, dim=-1)
-                max_probs, targets_u = torch.max(pseudo_label, dim=-1)
+                max_probs, preds_u = torch.max(pseudo_label, dim=-1)
                 mask = max_probs.ge(args.threshold).float()
                 L_fix = (F.cross_entropy(logits_u_s,
-                                         targets_u,
+                                         preds_u,
                                          reduction='none') * mask).mean()
                 mask_probs.update(mask.mean().item())
 
@@ -209,7 +211,6 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader,
             output_args["loss_fix"] = losses_fix.avg
             output_args["lr"] = [group["lr"] for group in optimizer.param_groups][0]
 
-
             optimizer.step()
             if args.opt != 'adam':
                 scheduler.step()
@@ -222,6 +223,19 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader,
             if not args.no_progress:
                 p_bar.set_description(default_out.format(**output_args))
                 p_bar.update()
+
+            if epoch >= args.start_fix:
+                correct, total = 0, 0
+                for i, idx in enumerate(indices):
+                    if idx < 50000: #argument?
+                        correct += (preds_u[i] == targets_u[i].to(args.device)).item()
+                        total += 1
+                    # else:
+                    #    print(idx)
+
+                # print(correct, total)
+                # print(correct/total)
+                pseudo_acc.update(correct / total)
 
         if not args.no_progress:
             p_bar.close()
@@ -246,6 +260,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader,
                 ema_to_save = ema_model.ema.module if hasattr(
                     ema_model.ema, "module") else ema_model.ema
 
+            '''
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model_to_save.state_dict(),
@@ -254,7 +269,20 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader,
                 'optimizer': optimizer.state_dict(),
                 'scheduler': scheduler.state_dict(),
             }, is_best, args.out)
+            '''
             print('Best top-1 acc: {:.2f}, Mean top-1 acc: {:.2f}, Curr top-1 acc: {:.2f}'
                   .format(best_acc, np.mean(test_accs[-20:]), test_acc))
+
+            log.append([test_acc, np.mean(test_accs[-20:]), best_acc, pseudo_acc.avg])
+
+            if epoch % 100 == 0:
+                folder_path = 'result/'
+                file_name = args.dataset + '_' + args.ood_data_name + '_ood_rate' + str(
+                    args.ood_rate) + '_n_labeled' + str(args.num_labeled) + '_openmatch_v1.csv'
+                # print(file_name)
+                print(np.array(log))
+                np.savetxt(folder_path + file_name, np.array(log), fmt='%.4f', delimiter=',')
+
+
     if args.local_rank in [-1, 0]:
         args.writer.close()
