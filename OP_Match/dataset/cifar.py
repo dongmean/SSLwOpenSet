@@ -45,6 +45,7 @@ def get_cifar(args, norm=True):
 
     else:
         raise NotImplementedError()
+    print(num_class, args.num_classes)
     assert num_class > args.num_classes
 
     if name == "cifar10":

@@ -102,7 +102,7 @@ def set_dataset(args):
     test_loader = DataLoader(
         test_dataset,
         sampler=SequentialSampler(test_dataset),
-        batch_size=args.batch_size,
+        batch_size=args.test_batch_size,
         num_workers=args.num_workers)
     if args.local_rank not in [-1, 0]:
         torch.distributed.barrier()

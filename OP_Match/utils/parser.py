@@ -24,7 +24,6 @@ def set_parser():
                         help='1 if evaluation mode ')
     parser.add_argument('--num_classes', type=int, default=10,
                         help='for cifar10')
-
     parser.add_argument('--out', default='result',
                         help='directory to output the result')
     parser.add_argument('--resume', default='', type=str,
@@ -81,6 +80,8 @@ def set_parser():
     parser.add_argument('--start-epoch', default=0, type=int,
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('--batch-size', default=64, type=int,
+                        help='train batchsize')
+    parser.add_argument('--test-batch-size', default=1000, type=int,
                         help='train batchsize')
     parser.add_argument('--lr', '--learning-rate', default=0.03, type=float,
                         help='initial learning rate')

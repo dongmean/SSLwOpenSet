@@ -252,6 +252,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
                 ema_to_save = ema_model.ema.module if hasattr(
                     ema_model.ema, "module") else ema_model.ema
 
+            '''
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model_to_save.state_dict(),
@@ -263,6 +264,7 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
                 'optimizer': optimizer.state_dict(),
                 'scheduler': scheduler.state_dict(),
             }, is_best, args.out)
+            '''
             test_accs.append(test_acc_close)
             logger.info('Best val closed acc: {:.3f}'.format(best_acc_val))
             logger.info('Valid closed acc: {:.3f}'.format(close_valid))
@@ -270,7 +272,15 @@ def train(args, labeled_trainloader, unlabeled_dataset, test_loader, val_loader,
             logger.info('Valid unk acc: {:.3f}'.format(unk_valid))
             logger.info('Valid roc: {:.3f}'.format(roc_valid))
             logger.info('Valid roc soft: {:.3f}'.format(roc_softm_valid))
-            logger.info('Mean top-1 acc: {:.3f}\n'.format(
-                np.mean(test_accs[-20:])))
+            logger.info('Mean top-1 acc: {:.3f}\n'.format(np.mean(test_accs[-20:])))
+
+            if epoch % 100 == 0:
+                folder_path = 'result/'
+                file_name = args.dataset + '_' + args.ood_data_name + '_ood_rate' + str(
+                    args.ood_rate) + '_n_labeled' + str(args.num_labeled) + '_openmatch_v1.csv'
+                # print(file_name)
+                print(np.array(test_accs))
+                np.savetxt(folder_path + file_name, np.array(test_accs), fmt='%.4f', delimiter=',')
+
     if args.local_rank in [-1, 0]:
         args.writer.close()
