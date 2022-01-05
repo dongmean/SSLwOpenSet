@@ -511,7 +511,7 @@ def get_ood(dataset, id, test_only=False, image_size=None):
                                      transform=test_transform)
 
     elif dataset == 'svhn':
-        test_set = datasets.SVHN(DATA_PATH, split='extra', download=False,
+        test_set = datasets.SVHN(DATA_PATH, split='extra', download=True,
                                  transform=test_transform)
 
     '''
